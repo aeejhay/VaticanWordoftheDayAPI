@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vatican Word of the Day - Today's Reading</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            color: #2c3e50;
+            border-bottom: 2px solid #e74c3c;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .date {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        .reading-section {
+            margin: 20px 0;
+        }
+        .section-title {
+            font-size: 1.3em;
+            color: #e74c3c;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border-left: 4px solid #e74c3c;
+            padding-left: 15px;
+        }
+        .reading-content {
+            font-size: 1.1em;
+            text-align: justify;
+            color: #2c3e50;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .gospel-content {
+            font-size: 1.1em;
+            text-align: justify;
+            color: #2c3e50;
+            background-color: #f0f8ff;
+            padding: 20px;
+            border-radius: 5px;
+            border-left: 4px solid #27ae60;
+        }
+        .pope-content {
+            font-size: 1.1em;
+            text-align: justify;
+            color: #2c3e50;
+            background-color: #fff8e1;
+            padding: 20px;
+            border-radius: 5px;
+            border-left: 4px solid #f39c12;
+            font-style: italic;
+        }
+        .instructions {
+            background-color: #e8f4f8;
+            padding: 20px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 20px;
+        }
+        .code-block {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .error {
+            color: #e74c3c;
+            background-color: #fdf2f2;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #e74c3c;
+        }
+        .success {
+            color: #27ae60;
+            background-color: #f0f9f0;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📖 Vatican Word of the Day</h1>
+            <div class="date" id="currentDate"></div>
+        </div>
+        
+
+        <div id="content">
+            <div class="error">
+                <h3>⚠️ CORS Error Detected</h3>
+                <p>This page needs to be served from a web server to work properly.</p>
+                <p>Please follow the instructions above to set up a local server.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Display current date
+        function displayCurrentDate() {
+            const today = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            document.getElementById('currentDate').textContent = today.toLocaleDateString('en-US', options);
+        }
+        
+        // Check if we're running on a web server
+        function isRunningOnServer() {
+            return window.location.protocol === 'http:' || window.location.protocol === 'https:';
+        }
+        
+        // Main initialization
+        function init() {
+            displayCurrentDate();
+            
+            if (isRunningOnServer()) {
+                // If running on server, try to load the CSV data
+                loadTodayReading();
+            } else {
+                // Show instructions for local file
+                console.log('Running as local file - CORS will block requests');
+            }
+        }
+        
+        // CSV loading function (only works when served from web server)
+        async function loadTodayReading() {
+            const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTou7QCtMbPeRj5g-G1uNPMr5alQ-SbLlf7ToXfGkScywPqawLNnfVi7kr8ns0GibG4Mqkdhovxe_7j/pub?output=csv';
+            
+            try {
+                document.getElementById('content').innerHTML = '<div class="instructions"><h3>🔄 Loading today\'s readings...</h3></div>';
+                
+                const response = await fetch(CSV_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const csvText = await response.text();
+                const data = parseCSV(csvText);
+                const todayReading = findTodayReading(data);
+                
+                displayReading(todayReading);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="error">
+                        <h3>❌ Error Loading Data</h3>
+                        <p>Failed to load the readings: ${error.message}</p>
+                        <p>Make sure you're running this from a web server (not opening the file directly).</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Parse CSV data
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n');
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].trim()) {
+                    const values = [];
+                    let currentValue = '';
+                    let inQuotes = false;
+                    
+                    for (let j = 0; j < lines[i].length; j++) {
+                        const char = lines[i][j];
+                        
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            values.push(currentValue.trim());
+                            currentValue = '';
+                        } else {
+                            currentValue += char;
+                        }
+                    }
+                    values.push(currentValue.trim());
+                    
+                    if (values.length >= 4) {
+                        data.push({
+                            date: values[0],
+                            reading: values[1],
+                            gospel: values[2],
+                            pope: values[3]
+                        });
+                    }
+                }
+            }
+            return data;
+        }
+        
+        // Format date for comparison
+        function formatDateForComparison(dateString) {
+            if (dateString.includes('/')) {
+                const parts = dateString.split('/');
+                if (parts.length === 3) {
+                    const day = parts[0].padStart(2, '0');
+                    const month = parts[1].padStart(2, '0');
+                    const year = parts[2];
+                    return `${year}-${month}-${day}`;
+                }
+            }
+            return dateString;
+        }
+        
+        // Get today's date in YYYY-MM-DD format
+        function getTodayString() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // Find today's reading
+        function findTodayReading(data) {
+            const today = getTodayString();
+            
+            for (let row of data) {
+                const rowDate = formatDateForComparison(row.date);
+                if (rowDate === today) {
+                    return row;
+                }
+            }
+            return null;
+        }
+        
+        // Display the reading
+        function displayReading(readingData) {
+            if (!readingData) {
+                document.getElementById('content').innerHTML = `
+                    <div class="error">
+                        <h3>📅 No Reading Found for Today</h3>
+                        <p>There's no reading available for today's date in the spreadsheet.</p>
+                        <p>Make sure your scraper has run and added today's data.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            document.getElementById('content').innerHTML = `
+                <div class="reading-section">
+                    <div class="section-title">📖 Reading of the Day</div>
+                    <div class="reading-content">${readingData.reading}</div>
+                </div>
+                
+                <div class="reading-section">
+                    <div class="section-title">✝️ Gospel of the Day</div>
+                    <div class="gospel-content">${readingData.gospel}</div>
+                </div>
+                
+                <div class="reading-section">
+                    <div class="section-title">👑 The Words of the Popes</div>
+                    <div class="pope-content">${readingData.pope}</div>
+                </div>
+            `;
+        }
+        
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
